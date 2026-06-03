@@ -43,10 +43,12 @@ jobs:
             FILES=$(find . -name '*.odt' -not -path './.git/*' | sed 's|^\./||' | while IFS= read -r ODT; do
               CURRENT_HASH=$(md5sum "$ODT" | awk '{print $1}')
 
-              # Cherche le hash précédemment enregistré pour ce fichier
+              # Clé = hash MD5 du chemin pour éviter tout problème avec espaces/slashes
+              PATH_KEY=$(echo "$ODT" | md5sum | awk '{print $1}')
+
               SAVED_HASH=""
               if [ -f "$CHECKSUM_FILE" ]; then
-                SAVED_HASH=$(grep "^$ODT " "$CHECKSUM_FILE" | awk '{print $2}')
+                SAVED_HASH=$(grep "^${PATH_KEY}|" "$CHECKSUM_FILE" | cut -d'|' -f2)
               fi
 
               if [ -z "$SAVED_HASH" ] || [ "$CURRENT_HASH" != "$SAVED_HASH" ]; then
@@ -93,13 +95,15 @@ jobs:
               "$ODT_FILE" \
               --outdir "$TARGET_DIR"
 
-            # Mettre à jour le checksum après conversion réussie
+            # Clé = hash MD5 du chemin
+            PATH_KEY=$(echo "$ODT_FILE" | md5sum | awk '{print $1}')
             NEW_HASH=$(md5sum "$ODT_FILE" | awk '{print $1}')
+
+            # Supprimer l'ancienne entrée et écrire la nouvelle
             if [ -f "$CHECKSUM_FILE" ]; then
-              # Supprimer l'ancienne entrée si elle existe
-              grep -vF "$ODT_FILE " "$CHECKSUM_FILE" > "$CHECKSUM_FILE.tmp" && mv "$CHECKSUM_FILE.tmp" "$CHECKSUM_FILE"
+              grep -v "^${PATH_KEY}|" "$CHECKSUM_FILE" > "$CHECKSUM_FILE.tmp" && mv "$CHECKSUM_FILE.tmp" "$CHECKSUM_FILE"
             fi
-            echo "$ODT_FILE $NEW_HASH" >> "$CHECKSUM_FILE"
+            echo "${PATH_KEY}|${NEW_HASH}" >> "$CHECKSUM_FILE"
 
           done <<< "$ODT_FILES"
 
