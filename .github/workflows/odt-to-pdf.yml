@@ -3,7 +3,7 @@ name: Convert ODT to PDF
 on:
   push:
     paths:
-      - '**.odt'   # Se déclenche uniquement si un .odt est modifié
+      - '**.odt'
 
   workflow_dispatch:
     inputs:
@@ -17,13 +17,13 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write  # Nécessaire pour pousser les PDFs générés
+      contents: write
 
     steps:
       - name: Checkout du dépôt
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2  # Permet de comparer avec le commit précédent
+          fetch-depth: 2
 
       - name: Installer LibreOffice
         run: |
@@ -41,7 +41,12 @@ jobs:
             FILES=$(git diff --name-only --diff-filter=AM HEAD~1 HEAD -- '*.odt' | tr '\n' ' ' | sed 's/ $//')
           fi
 
-          echo "Fichiers à traiter : $FILES"
+          echo "Fichiers à traiter : '$FILES'"
+
+          if [ -z "$FILES" ]; then
+            echo "Aucun fichier ODT à convertir."
+          fi
+
           echo "files=$FILES" >> "$GITHUB_OUTPUT"
 
       - name: Convertir les ODT en PDF
@@ -53,6 +58,12 @@ jobs:
           mkdir -p "$PDF_DIR"
 
           for ODT_FILE in $ODT_FILES; do
+            # Ignorer si ce n'est pas un vrai fichier
+            if [ ! -f "$ODT_FILE" ]; then
+              echo "Ignoré (fichier introuvable) : $ODT_FILE"
+              continue
+            fi
+
             echo "Conversion de : $ODT_FILE"
 
             RELATIVE_DIR=$(dirname "$ODT_FILE")
@@ -73,3 +84,4 @@ jobs:
           git add pdf_output/
           git diff --cached --quiet || git commit -m "ci: conversion ODT -> PDF [skip ci]"
           git push
+        
