@@ -1,9 +1,9 @@
 name: Convert ODT to PDF
+
 on:
   push:
     branches:
       - main
-
   workflow_dispatch:
     inputs:
       convert_all:
@@ -14,7 +14,6 @@ on:
 jobs:
   convert:
     runs-on: ubuntu-latest
-
     permissions:
       contents: write
 
@@ -22,7 +21,7 @@ jobs:
       - name: Checkout du dépôt
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0  # Historique complet pour que git diff fonctionne toujours
 
       - name: Installer LibreOffice
         run: |
@@ -33,14 +32,29 @@ jobs:
         id: changed_files
         run: |
           if [ "${{ inputs.convert_all }}" = "true" ]; then
+            echo "Mode : tous les fichiers ODT du dépôt"
             FILES=$(find . -name '*.odt' -not -path './.git/*' | sed 's|^\./||')
+
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            BEFORE="${{ github.event.before }}"
+            AFTER="${{ github.sha }}"
+
+            # Premier push sur une branche : before est 000...000
+            if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+              echo "Premier push : on liste tous les ODT"
+              FILES=$(find . -name '*.odt' -not -path './.git/*' | sed 's|^\./||')
+            else
+              echo "Push normal : diff entre $BEFORE et $AFTER"
+              FILES=$(git diff --name-only --diff-filter=AM "$BEFORE" "$AFTER" -- '*.odt')
+            fi
+
           else
-            FILES=$(git diff --name-only --diff-filter=AM HEAD~1 HEAD -- '*.odt')
+            # workflow_dispatch sans convert_all : fallback sur tous les ODT
+            echo "Déclenchement manuel sans option : on liste tous les ODT"
+            FILES=$(find . -name '*.odt' -not -path './.git/*' | sed 's|^\./||')
           fi
 
-
           echo "Fichiers à traiter : '$FILES'"
-
           if [ -z "$FILES" ]; then
             echo "Aucun fichier ODT à convertir."
           fi
@@ -58,28 +72,25 @@ jobs:
         run: |
           PDF_DIR="pdf_output"
           mkdir -p "$PDF_DIR"
-          
+
           while IFS= read -r ODT_FILE; do
-          
             [ -z "$ODT_FILE" ] && continue
-          
+
             if [ ! -f "$ODT_FILE" ]; then
-              echo "Ignoré : $ODT_FILE"
+              echo "Ignoré (introuvable) : $ODT_FILE"
               continue
             fi
 
             echo "Conversion de : $ODT_FILE"
-          
             RELATIVE_DIR=$(dirname "$ODT_FILE")
             TARGET_DIR="$PDF_DIR/$RELATIVE_DIR"
-          
             mkdir -p "$TARGET_DIR"
-          
+
             libreoffice --headless \
               --convert-to pdf \
               "$ODT_FILE" \
               --outdir "$TARGET_DIR"
-        
+
           done <<< "$ODT_FILES"
 
       - name: Commit et push des PDFs
@@ -91,4 +102,3 @@ jobs:
           git add pdf_output/
           git diff --cached --quiet || git commit -m "ci: conversion ODT -> PDF [skip ci]"
           git push
-        
