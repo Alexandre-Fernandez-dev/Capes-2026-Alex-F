@@ -46,23 +46,22 @@ jobs:
 
       - name: Convertir les ODT en PDF
         if: steps.changed_files.outputs.files != ''
+        env:
+          ODT_FILES: ${{ steps.changed_files.outputs.files }}
         run: |
-          # Dossier de destination des PDFs (modifiable)
           PDF_DIR="pdf_output"
           mkdir -p "$PDF_DIR"
 
-          for ODT_FILE in ${{ steps.changed_files.outputs.files }}; do
+          for ODT_FILE in $ODT_FILES; do
             echo "Conversion de : $ODT_FILE"
 
-            # Reproduire l'arborescence dans pdf_output/
             RELATIVE_DIR=$(dirname "$ODT_FILE")
             TARGET_DIR="$PDF_DIR/$RELATIVE_DIR"
             mkdir -p "$TARGET_DIR"
 
-            # Convertir avec LibreOffice en headless
             libreoffice --headless --convert-to pdf "$ODT_FILE" --outdir "$TARGET_DIR"
 
-            echo "  → $TARGET_DIR/$(basename "${ODT_FILE%.odt}.pdf")"
+            echo "  -> $TARGET_DIR/$(basename "${ODT_FILE%.odt}.pdf")"
           done
 
       - name: Commit et push des PDFs
@@ -72,5 +71,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git add pdf_output/
-          git diff --cached --quiet || git commit -m "ci: conversion ODT → PDF [skip ci]"
+          git diff --cached --quiet || git commit -m "ci: conversion ODT -> PDF [skip ci]"
           git push
