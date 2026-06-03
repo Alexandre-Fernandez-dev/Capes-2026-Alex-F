@@ -35,10 +35,10 @@ jobs:
         run: |
           if [ "${{ inputs.convert_all }}" = "true" ]; then
             echo "Mode : tous les fichiers ODT du dépôt"
-            FILES=$(find . -name '*.odt' -not -path './.git/*' | sed 's|^\./||' | tr '\n' ' ' | sed 's/ $//')
+            FILES=$(find . -name '*.odt' -not -path './.git/*' | sed 's|^\./||' | tr '\n' ' ' | sed 's/ $//' |sed 's/^/"/;s/$/"/')
           else
             echo "Mode : fichiers ODT modifiés uniquement"
-            FILES=$(git diff --name-only --diff-filter=AM HEAD~1 HEAD -- '*.odt' | tr '\n' ' ' | sed 's/ $//')
+            FILES=$(git diff --name-only --diff-filter=AM HEAD~1 HEAD -- '*.odt' | tr '\n' ' ' | sed 's/ $//'|sed 's/^/"/;s/$/"/')
           fi
 
           echo "Fichiers à traiter : '$FILES'"
