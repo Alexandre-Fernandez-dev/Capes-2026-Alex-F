@@ -47,7 +47,11 @@ jobs:
             echo "Aucun fichier ODT à convertir."
           fi
 
-          echo "files=$FILES" >> "$GITHUB_OUTPUT"
+          {
+            echo 'files<<EOF'
+            echo "$FILES"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
 
       - name: Convertir les ODT en PDF
         if: steps.changed_files.outputs.files != ''
