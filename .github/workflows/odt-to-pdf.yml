@@ -31,20 +31,25 @@ jobs:
       - name: Récupérer les fichiers ODT à convertir
         id: changed_files
         run: |
+          CHECKSUM_FILE="pdf_output/.checksums"
+          mkdir -p pdf_output
+
           if [ "${{ inputs.convert_all }}" = "true" ]; then
             echo "Mode : tous les fichiers ODT du dépôt"
             FILES=$(find . -name '*.odt' -not -path './.git/*' | sed 's|^\./||')
 
           else
-            echo "Mode : ODT sans PDF ou plus récent que son PDF"
+            echo "Mode : ODT nouveaux ou dont le contenu a changé"
             FILES=$(find . -name '*.odt' -not -path './.git/*' | sed 's|^\./||' | while IFS= read -r ODT; do
-              PDF="pdf_output/${ODT%.odt}.pdf"
+              CURRENT_HASH=$(md5sum "$ODT" | awk '{print $1}')
 
-              if [ ! -f "$PDF" ]; then
-                # Pas de PDF correspondant → à convertir
-                echo "$ODT"
-              elif [ "$ODT" -nt "$PDF" ]; then
-                # ODT plus récent que le PDF → à reconvertir
+              # Cherche le hash précédemment enregistré pour ce fichier
+              SAVED_HASH=""
+              if [ -f "$CHECKSUM_FILE" ]; then
+                SAVED_HASH=$(grep "^$ODT " "$CHECKSUM_FILE" | awk '{print $2}')
+              fi
+
+              if [ -z "$SAVED_HASH" ] || [ "$CURRENT_HASH" != "$SAVED_HASH" ]; then
                 echo "$ODT"
               fi
             done)
@@ -67,6 +72,7 @@ jobs:
           ODT_FILES: ${{ steps.changed_files.outputs.files }}
         run: |
           PDF_DIR="pdf_output"
+          CHECKSUM_FILE="$PDF_DIR/.checksums"
           mkdir -p "$PDF_DIR"
 
           while IFS= read -r ODT_FILE; do
@@ -86,6 +92,14 @@ jobs:
               --convert-to pdf \
               "$ODT_FILE" \
               --outdir "$TARGET_DIR"
+
+            # Mettre à jour le checksum après conversion réussie
+            NEW_HASH=$(md5sum "$ODT_FILE" | awk '{print $1}')
+            if [ -f "$CHECKSUM_FILE" ]; then
+              # Supprimer l'ancienne entrée si elle existe
+              sed -i "/^$ODT_FILE /d" "$CHECKSUM_FILE"
+            fi
+            echo "$ODT_FILE $NEW_HASH" >> "$CHECKSUM_FILE"
 
           done <<< "$ODT_FILES"
 
