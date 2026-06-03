@@ -21,7 +21,7 @@ jobs:
       - name: Checkout du dépôt
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Historique complet pour que git diff fonctionne toujours
+          fetch-depth: 0
 
       - name: Installer LibreOffice
         run: |
@@ -35,23 +35,19 @@ jobs:
             echo "Mode : tous les fichiers ODT du dépôt"
             FILES=$(find . -name '*.odt' -not -path './.git/*' | sed 's|^\./||')
 
-          elif [ "${{ github.event_name }}" = "push" ]; then
-            BEFORE="${{ github.event.before }}"
-            AFTER="${{ github.sha }}"
-
-            # Premier push sur une branche : before est 000...000
-            if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
-              echo "Premier push : on liste tous les ODT"
-              FILES=$(find . -name '*.odt' -not -path './.git/*' | sed 's|^\./||')
-            else
-              echo "Push normal : diff entre $BEFORE et $AFTER"
-              FILES=$(git diff --name-only --diff-filter=AM "$BEFORE" "$AFTER" -- '*.odt')
-            fi
-
           else
-            # workflow_dispatch sans convert_all : fallback sur tous les ODT
-            echo "Déclenchement manuel sans option : on liste tous les ODT"
-            FILES=$(find . -name '*.odt' -not -path './.git/*' | sed 's|^\./||')
+            echo "Mode : ODT sans PDF ou plus récent que son PDF"
+            FILES=$(find . -name '*.odt' -not -path './.git/*' | sed 's|^\./||' | while IFS= read -r ODT; do
+              PDF="pdf_output/${ODT%.odt}.pdf"
+
+              if [ ! -f "$PDF" ]; then
+                # Pas de PDF correspondant → à convertir
+                echo "$ODT"
+              elif [ "$ODT" -nt "$PDF" ]; then
+                # ODT plus récent que le PDF → à reconvertir
+                echo "$ODT"
+              fi
+            done)
           fi
 
           echo "Fichiers à traiter : '$FILES'"
