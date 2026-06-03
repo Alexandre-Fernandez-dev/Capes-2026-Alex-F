@@ -1,0 +1,21 @@
+name: Notifier le repo parent
+ 
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'pdf_output/**'   # Se déclenche uniquement si des PDFs ont changé
+ 
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Déclencher le workflow du repo parent
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.PARENT_REPO_TOKEN }}
+          repository: TON-USER/TON-REPO-PARENT   # <-- à modifier
+          event-type: submodule-pdf-updated
+          client-payload: '{"submodule": "Alexandre"}'
+ 
