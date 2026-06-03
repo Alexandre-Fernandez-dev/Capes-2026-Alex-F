@@ -34,12 +34,11 @@ jobs:
         id: changed_files
         run: |
           if [ "${{ inputs.convert_all }}" = "true" ]; then
-            echo "Mode : tous les fichiers ODT du dépôt"
-            FILES=$(find . -name '*.odt' -not -path './.git/*' | sed 's|^\./||' | sed 's/ $//' |sed 's/^/"/;s/$/"/')
+            FILES=$(find . -name '*.odt' -not -path './.git/*' | sed 's|^\./||')
           else
-            echo "Mode : fichiers ODT modifiés uniquement"
-            FILES=$(git diff --name-only --diff-filter=AM HEAD~1 HEAD -- '*.odt' | sed 's/ $//'|sed 's/^/"/;s/$/"/')
+            FILES=$(git diff --name-only --diff-filter=AM HEAD~1 HEAD -- '*.odt')
           fi
+
 
           echo "Fichiers à traiter : '$FILES'"
 
@@ -60,24 +59,29 @@ jobs:
         run: |
           PDF_DIR="pdf_output"
           mkdir -p "$PDF_DIR"
-
-          for ODT_FILE in $ODT_FILES; do
-            # Ignorer si ce n'est pas un vrai fichier
+          
+          while IFS= read -r ODT_FILE; do
+          
+            [ -z "$ODT_FILE" ] && continue
+          
             if [ ! -f "$ODT_FILE" ]; then
-              echo "Ignoré (fichier introuvable) : $ODT_FILE"
+              echo "Ignoré : $ODT_FILE"
               continue
             fi
 
             echo "Conversion de : $ODT_FILE"
-
+          
             RELATIVE_DIR=$(dirname "$ODT_FILE")
             TARGET_DIR="$PDF_DIR/$RELATIVE_DIR"
+          
             mkdir -p "$TARGET_DIR"
-
-            libreoffice --headless --convert-to pdf "$ODT_FILE" --outdir "$TARGET_DIR"
-
-            echo "  -> $TARGET_DIR/$(basename "${ODT_FILE%.odt}.pdf")"
-          done
+          
+            libreoffice --headless \
+              --convert-to pdf \
+              "$ODT_FILE" \
+              --outdir "$TARGET_DIR"
+        
+          done <<< "$ODT_FILES"
 
       - name: Commit et push des PDFs
         if: steps.changed_files.outputs.files != ''
