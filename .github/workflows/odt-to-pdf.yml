@@ -2,8 +2,8 @@ name: Convert ODT to PDF
 
 on:
   push:
-    paths:
-      - '**.odt'
+    branches:
+      - main
 
   workflow_dispatch:
     inputs:
