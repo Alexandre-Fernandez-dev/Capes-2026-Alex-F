@@ -97,7 +97,7 @@ jobs:
             NEW_HASH=$(md5sum "$ODT_FILE" | awk '{print $1}')
             if [ -f "$CHECKSUM_FILE" ]; then
               # Supprimer l'ancienne entrée si elle existe
-              sed -i "/^$ODT_FILE /d" "$CHECKSUM_FILE"
+              grep -vF "$ODT_FILE " "$CHECKSUM_FILE" > "$CHECKSUM_FILE.tmp" && mv "$CHECKSUM_FILE.tmp" "$CHECKSUM_FILE"
             fi
             echo "$ODT_FILE $NEW_HASH" >> "$CHECKSUM_FILE"
 
