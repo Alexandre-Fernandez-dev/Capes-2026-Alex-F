@@ -15,7 +15,7 @@ jobs:
         uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.PARENT_REPO_TOKEN }}
-          repository: Laexandre-Fernandez-dev/CAPES-2026   # <-- à modifier
+          repository: Alexandre-Fernandez-dev/CAPES-2026  # <-- à modifier
           event-type: submodule-pdf-updated
           client-payload: '{"submodule": "Alexandre"}'
  
