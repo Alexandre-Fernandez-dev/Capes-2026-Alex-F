@@ -36,11 +36,11 @@ jobs:
 
           if [ "${{ inputs.convert_all }}" = "true" ]; then
             echo "Mode : tous les fichiers ODT/ODP du dépôt"
-            FILES=$(find . -name '*.odt' -o -name '*.odt' -not -path './.git/*' | sed 's|^\./||')
+            FILES=$(find . -name '*.odt' -o -name '*.odp' -not -path './.git/*' | sed 's|^\./||')
 
           else
             echo "Mode : ODT/ODP nouveaux ou dont le contenu a changé"
-            FILES=$(find . -name '*.odt' -o -name '*.odt' -not -path './.git/*' | sed 's|^\./||' | while IFS= read -r FIL; do
+            FILES=$(find . -name '*.odt' -o -name '*.odp' -not -path './.git/*' | sed 's|^\./||' | while IFS= read -r FIL; do
               CURRENT_HASH=$(md5sum "$FIL" | awk '{print $1}')
 
               # Clé = hash MD5 du chemin pour éviter tout problème avec espaces/slashes
@@ -68,7 +68,7 @@ jobs:
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
-      - name: Convertir les ODT en PDF
+      - name: Convertir les ODT/ODP en PDF
         if: steps.changed_files.outputs.files != ''
         env:
           ODT_FILES: ${{ steps.changed_files.outputs.files }}
