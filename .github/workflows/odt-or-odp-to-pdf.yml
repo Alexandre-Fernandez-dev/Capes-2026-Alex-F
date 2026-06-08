@@ -77,7 +77,7 @@ jobs:
           CHECKSUM_FILE="$PDF_DIR/.checksums"
           mkdir -p "$PDF_DIR"
 
-          while IFS= read -r ODTP_FILE; do
+          while IFS= read -r $ODTP_FILE; do
             echo "enter loop"
             echo "$ODTP_FILE"
             [ -z "$ODTP_FILE" ] && continue
