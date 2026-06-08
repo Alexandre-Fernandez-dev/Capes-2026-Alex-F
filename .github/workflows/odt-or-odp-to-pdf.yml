@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       convert_all:
-        description: 'Convertir tous les ODT du dépôt (pas seulement les modifiés)'
+        description: 'Convertir tous les ODT/ODP du dépôt (pas seulement les modifiés)'
         type: boolean
         default: false
 
