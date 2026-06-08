@@ -1,4 +1,4 @@
-name: Convert ODT to PDF
+name: Convert ODT/ODP to PDF
 
 on:
   push:
@@ -28,23 +28,23 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y libreoffice --no-install-recommends
 
-      - name: Récupérer les fichiers ODT à convertir
+      - name: Récupérer les fichiers à convertir
         id: changed_files
         run: |
           CHECKSUM_FILE="pdf_output/.checksums"
           mkdir -p pdf_output
 
           if [ "${{ inputs.convert_all }}" = "true" ]; then
-            echo "Mode : tous les fichiers ODT du dépôt"
-            FILES=$(find . -name '*.odt' -not -path './.git/*' | sed 's|^\./||')
+            echo "Mode : tous les fichiers ODT/ODP du dépôt"
+            FILES=$(find . -name '*.odt' -o -name '*.odt' -not -path './.git/*' | sed 's|^\./||')
 
           else
-            echo "Mode : ODT nouveaux ou dont le contenu a changé"
-            FILES=$(find . -name '*.odt' -not -path './.git/*' | sed 's|^\./||' | while IFS= read -r ODT; do
-              CURRENT_HASH=$(md5sum "$ODT" | awk '{print $1}')
+            echo "Mode : ODT/ODP nouveaux ou dont le contenu a changé"
+            FILES=$(find . -name '*.odt' -o -name '*.odt' -not -path './.git/*' | sed 's|^\./||' | while IFS= read -r FIL; do
+              CURRENT_HASH=$(md5sum "$FIL" | awk '{print $1}')
 
               # Clé = hash MD5 du chemin pour éviter tout problème avec espaces/slashes
-              PATH_KEY=$(echo "$ODT" | md5sum | awk '{print $1}')
+              PATH_KEY=$(echo "$FIL" | md5sum | awk '{print $1}')
 
               SAVED_HASH=""
               if [ -f "$CHECKSUM_FILE" ]; then
@@ -52,14 +52,14 @@ jobs:
               fi
 
               if [ -z "$SAVED_HASH" ] || [ "$CURRENT_HASH" != "$SAVED_HASH" ]; then
-                echo "$ODT"
+                echo "$FIL"
               fi
             done)
           fi
 
           echo "Fichiers à traiter : '$FILES'"
           if [ -z "$FILES" ]; then
-            echo "Aucun fichier ODT à convertir."
+            echo "Aucun fichier ODT/ODP à convertir."
           fi
 
           {
@@ -77,27 +77,27 @@ jobs:
           CHECKSUM_FILE="$PDF_DIR/.checksums"
           mkdir -p "$PDF_DIR"
 
-          while IFS= read -r ODT_FILE; do
-            [ -z "$ODT_FILE" ] && continue
+          while IFS= read -r ODTP_FILE; do
+            [ -z "$ODTP_FILE" ] && continue
 
-            if [ ! -f "$ODT_FILE" ]; then
-              echo "Ignoré (introuvable) : $ODT_FILE"
+            if [ ! -f "$ODTP_FILE" ]; then
+              echo "Ignoré (introuvable) : $ODTP_FILE"
               continue
             fi
 
-            echo "Conversion de : $ODT_FILE"
-            RELATIVE_DIR=$(dirname "$ODT_FILE")
+            echo "Conversion de : $ODTP_FILE"
+            RELATIVE_DIR=$(dirname "$ODTP_FILE")
             TARGET_DIR="$PDF_DIR/$RELATIVE_DIR"
             mkdir -p "$TARGET_DIR"
 
             libreoffice --headless \
               --convert-to pdf \
-              "$ODT_FILE" \
+              "$ODTP_FILE" \
               --outdir "$TARGET_DIR"
 
             # Clé = hash MD5 du chemin
-            PATH_KEY=$(echo "$ODT_FILE" | md5sum | awk '{print $1}')
-            NEW_HASH=$(md5sum "$ODT_FILE" | awk '{print $1}')
+            PATH_KEY=$(echo "$ODTP_FILE" | md5sum | awk '{print $1}')
+            NEW_HASH=$(md5sum "$ODTP_FILE" | awk '{print $1}')
 
             # Supprimer l'ancienne entrée et écrire la nouvelle
             if [ -f "$CHECKSUM_FILE" ]; then
@@ -105,7 +105,7 @@ jobs:
             fi
             echo "${PATH_KEY}|${NEW_HASH}" >> "$CHECKSUM_FILE"
 
-          done <<< "$ODT_FILES"
+          done <<< "$ODTP_FILES"
 
       - name: Commit et push des PDFs
         if: steps.changed_files.outputs.files != ''
@@ -114,5 +114,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git add pdf_output/
-          git diff --cached --quiet || git commit -m "ci: conversion ODT -> PDF [skip ci]"
+          git diff --cached --quiet || git commit -m "ci: conversion ODT/ODP -> PDF [skip ci]"
           git push
