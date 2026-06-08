@@ -78,6 +78,8 @@ jobs:
           mkdir -p "$PDF_DIR"
 
           while IFS= read -r ODTP_FILE; do
+            echo "enter loop"
+            echo "$ODTP_FILE"
             [ -z "$ODTP_FILE" ] && continue
 
             if [ ! -f "$ODTP_FILE" ]; then
