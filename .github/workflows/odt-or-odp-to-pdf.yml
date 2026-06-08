@@ -71,44 +71,40 @@ jobs:
       - name: Convertir les ODT/ODP en PDF
         if: steps.changed_files.outputs.files != ''
         env:
-          ODTP_FILE: ${{ steps.changed_files.outputs.files }}
+          ODTP_FILES: ${{ steps.changed_files.outputs.files }}
         run: |
           PDF_DIR="pdf_output"
           CHECKSUM_FILE="$PDF_DIR/.checksums"
           mkdir -p "$PDF_DIR"
 
-          while IFS= read -r $ODTP_FILE; do
-            echo "enter loop"
-            echo "$ODTP_FILE"
-            [ -z "$ODTP_FILE" ] && continue
+          while IFS= read -r FILE; do
+            [ -z "$FILE" ] && continue
 
-            if [ ! -f "$ODTP_FILE" ]; then
-              echo "Ignoré (introuvable) : $ODTP_FILE"
+            if [ ! -f "$FILE" ]; then
+              echo "Ignoré (introuvable) : $FILE"
               continue
             fi
 
-            echo "Conversion de : $ODTP_FILE"
-            RELATIVE_DIR=$(dirname "$ODTP_FILE")
+            echo "Conversion de : $FILE"
+            RELATIVE_DIR=$(dirname "$FILE")
             TARGET_DIR="$PDF_DIR/$RELATIVE_DIR"
             mkdir -p "$TARGET_DIR"
 
             libreoffice --headless \
               --convert-to pdf \
-              "$ODTP_FILE" \
+              "$FILE" \
               --outdir "$TARGET_DIR"
 
-            # Clé = hash MD5 du chemin
-            PATH_KEY=$(echo "$ODTP_FILE" | md5sum | awk '{print $1}')
-            NEW_HASH=$(md5sum "$ODTP_FILE" | awk '{print $1}')
+            PATH_KEY=$(echo "$FILE" | md5sum | awk '{print $1}')
+            NEW_HASH=$(md5sum "$FILE" | awk '{print $1}')
 
-            # Supprimer l'ancienne entrée et écrire la nouvelle
             if [ -f "$CHECKSUM_FILE" ]; then
-              grep -v "^${PATH_KEY}|" "$CHECKSUM_FILE" > "$CHECKSUM_FILE.tmp" && mv "$CHECKSUM_FILE.tmp" "$CHECKSUM_FILE"
+              grep -v "^${PATH_KEY}|" "$CHECKSUM_FILE" > "$CHECKSUM_FILE.tmp" \
+                && mv "$CHECKSUM_FILE.tmp" "$CHECKSUM_FILE"
             fi
             echo "${PATH_KEY}|${NEW_HASH}" >> "$CHECKSUM_FILE"
 
           done <<< "$ODTP_FILES"
-
       - name: Commit et push des PDFs
         if: steps.changed_files.outputs.files != ''
         run: |
